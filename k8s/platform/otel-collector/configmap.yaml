@@ -114,6 +114,18 @@ data:
             value: homelab-sfo3
             action: upsert
 
+      resource/metrics:                                                                                                                          
+        attributes:                                                                                                                              
+          - key: service.name
+            value: homelab-metrics
+            action: upsert
+
+      resource/logs:
+        attributes:
+          - key: service.name
+            value: homelab-logs
+            action: upsert
+
     exporters:
       otlp/honeycomb:
         endpoint: api.honeycomb.io:443
@@ -129,9 +141,9 @@ data:
           exporters: [otlp/honeycomb]
         metrics:
           receivers: [otlp, kubeletstats]
-          processors: [memory_limiter, k8sattributes, resource/cluster, batch]
+          processors: [memory_limiter, k8sattributes, resource/cluster, resource/metrics, batch]
           exporters: [otlp/honeycomb]
         logs:
           receivers: [otlp, filelog, k8sobjects]
-          processors: [memory_limiter, k8sattributes, resource/cluster, batch]
+          processors: [memory_limiter, k8sattributes, resource/cluster, resource/logs, batch]
           exporters: [otlp/honeycomb]
