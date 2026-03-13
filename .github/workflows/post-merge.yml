@@ -20,14 +20,11 @@ jobs:
       k8s: ${{ steps.filter.outputs.k8s }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          base: HEAD~1
-          filters: |
-            terraform:
+      - uses: dorny/paths-filter@v3                                                                                                              
+        id: filter                                                                                                                               
+        with:                                                                                                                                    
+          filters: |                                                                                                                             
+            terraform:                                                                                                                         
               - 'terraform/**'
             k8s:
               - 'k8s/**'
