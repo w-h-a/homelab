@@ -1,4 +1,4 @@
-name: Terraform Apply
+name: Post-Merge
 
 on:
   push:
@@ -6,13 +6,35 @@ on:
       - main
     paths:
       - "terraform/**"
+      - "k8s/**"
 
 concurrency:
-  group: terraform-apply
+  group: post-merge
   cancel-in-progress: false
 
 jobs:
-  apply:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      terraform: ${{ steps.filter.outputs.terraform }}
+      k8s: ${{ steps.filter.outputs.k8s }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: HEAD~1
+          filters: |
+            terraform:
+              - 'terraform/**'
+            k8s:
+              - 'k8s/**'
+
+  terraform-apply:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
     runs-on: ubuntu-latest
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY }}
@@ -32,3 +54,29 @@ jobs:
       - name: Terraform Apply
         working-directory: terraform
         run: terraform apply -auto-approve -no-color
+
+  k8s-apply:
+    needs: [changes, terraform-apply]
+    if: |
+      always() &&
+      needs.changes.outputs.k8s == 'true' &&
+      (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DO_TOKEN }}
+
+      - name: Configure kubectl
+        run: doctl kubernetes cluster kubeconfig save homelab-sfo3
+
+      - name: Apply Traefik
+        run: |
+          kubectl apply --server-side --force-conflicts -f k8s/platform/traefik/crds.yaml
+          kubectl apply -f k8s/platform/traefik/namespace.yaml
+          kubectl apply -f k8s/platform/traefik/rbac.yaml
+          kubectl apply -f k8s/platform/traefik/deployment.yaml
+          kubectl apply -f k8s/platform/traefik/service.yaml
+          kubectl rollout status deployment/traefik -n traefik --timeout=120s
