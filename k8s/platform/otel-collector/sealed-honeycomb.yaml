@@ -1,0 +1,14 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: honeycomb
+  namespace: otel-collector
+spec:
+  encryptedData:
+    api-key: AgCT2xRd3TjKqGKXLMrVlLzOh/2jorbeut0GjKV52IggUyHnI8CqpzYYfZgp/Hc6vxrgO7Cvg/lhXmQhN4LSAY3q2ZPqdFcJyWKqXBby3YOQGotC/J9uVgvcE+TuyrB1QQJcBdz6nAUKpVfa8T3+ONvkgD6vudg6EVBXwyt9bLlWbMTMlzHxuMx9oew5Sa0NpWNE520V9+pnkbDNMUkprIOVT3RXzDTu77vmQQK99EShQFqyX6MKUKsRZthCDrd0YoiJXQiqCyionugkW+TUg6WieAXvOhIHWEfKvp+kogpxMWKWoDP4z7MxhlgnzldpsV6aBLaZMXevwQjMKZAwUa+i8xnHzvELwzLH3HL9jRK106I7UwuMcXItbf4cwfTAwd8yZqgDqx8uHDwUzYTN9qYdJwCBoAtUn5jNDDc8Zerdjk6ku+feanXervFXYwfPXfctQ/yQvKQ72mzvYWqE7ZY0gXRdEjCT/pr7sdZXuUzDKnflx19BiJF8Mn0n1ucQKNGtSSfJjB/QUT6kxxEK6HiGx2hHFS9Ae3Iuvl1GzNTHcpdeatoGj8NvkoQKsJLfxXHiiZE41lXDLOL0OjsnEkc+kOg4ZKLQliD0eYiCOT9ObFq5AXvuQhbwEmavZGJJiPxioflJymlcn8+fIh6VGBMAfJQuj5Ldbhi9mDs/yl+MA5s5/ZEoTfBnHxZg4wct8TclVOFPe+mMPB4iv+4+pBp2vJxW/kmrt0o=
+  template:
+    metadata:
+      name: honeycomb
+      namespace: otel-collector
+    type: Opaque
