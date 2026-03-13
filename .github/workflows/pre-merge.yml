@@ -1,16 +1,37 @@
-name: Terraform Plan
+name: Pre-Merge
 
 on:
   pull_request:
     paths:
       - "terraform/**"
+      - "k8s/**"
 
 concurrency:
-  group: terraform-plan-${{ github.head_ref }}
+  group: pre-merge-${{ github.head_ref }}
   cancel-in-progress: true
 
 jobs:
-  plan:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      terraform: ${{ steps.filter.outputs.terraform }}
+      k8s: ${{ steps.filter.outputs.k8s }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            terraform:
+              - 'terraform/**'
+            k8s:
+              - 'k8s/**'
+
+  terraform-plan:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -42,6 +63,47 @@ jobs:
             const output = `#### Terraform Plan
             \`\`\`
             ${{ steps.plan.outputs.stdout }}
+            \`\`\`
+            `;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+  k8s-validate:
+    needs: changes
+    if: needs.changes.outputs.k8s == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kubeconform
+        run: |
+          curl -sL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo mv kubeconform /usr/local/bin/
+
+      - name: Validate manifests
+        id: validate
+        run: |
+          output=$(kubeconform -summary -output text --ignore-missing-schemas k8s/ 2>&1) || failed=1
+          echo "stdout<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$output" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          exit ${failed:-0}
+
+      - name: Comment Validation on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `#### K8s Validate
+            \`\`\`
+            ${{ steps.validate.outputs.stdout }}
             \`\`\`
             `;
             github.rest.issues.createComment({

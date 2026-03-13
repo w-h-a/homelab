@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traefik
+  namespace: traefik
+  labels:
+    app: traefik
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traefik
+  template:
+    metadata:
+      labels:
+        app: traefik
+    spec:
+      serviceAccountName: traefik
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: traefik
+          image: traefik:v3.3
+          args:
+            - --entrypoints.web.address=:80
+            - --entrypoints.websecure.address=:443
+            - --providers.kubernetescrd
+            - --providers.kubernetescrd.allowCrossNamespace=false
+            - --accesslog=true
+            - --log.level=INFO
+            - --ping=true
+            - --tracing.otlp=true
+            - --tracing.otlp.grpc.endpoint=api.honeycomb.io:443
+            - --tracing.otlp.grpc.insecure=false
+            - --tracing.otlp.grpc.headers.x-honeycomb-team=$(HONEYCOMB_API_KEY)
+            - --tracing.serviceName=traefik
+          env:
+            - name: HONEYCOMB_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: honeycomb
+                  key: api-key
+          ports:
+            - name: web
+              containerPort: 80
+            - name: websecure
+              containerPort: 443
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 128Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+              add: [NET_BIND_SERVICE]
