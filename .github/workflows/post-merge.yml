@@ -4,34 +4,13 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "terraform/**"
-      - "k8s/**"
 
 concurrency:
   group: post-merge
   cancel-in-progress: false
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      terraform: ${{ steps.filter.outputs.terraform }}
-      k8s: ${{ steps.filter.outputs.k8s }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3                                                                                                              
-        id: filter                                                                                                                               
-        with:                                                                                                                                    
-          filters: |                                                                                                                             
-            terraform:                                                                                                                         
-              - 'terraform/**'
-            k8s:
-              - 'k8s/**'
-
   terraform-apply:
-    needs: changes
-    if: needs.changes.outputs.terraform == 'true'
     runs-on: ubuntu-latest
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY }}
@@ -53,10 +32,9 @@ jobs:
         run: terraform apply -auto-approve -no-color
 
   k8s-apply:
-    needs: [changes, terraform-apply]
+    needs: [terraform-apply]
     if: |
       always() &&
-      needs.changes.outputs.k8s == 'true' &&
       (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
@@ -72,6 +50,7 @@ jobs:
       - name: Apply sealed-secrets
         run: |
           kubectl apply --server-side --force-conflicts -f k8s/platform/sealed-secrets/sealed-secrets.yaml
+          kubectl rollout restart deployment/sealed-secrets-controller -n kube-system
           kubectl rollout status deployment/sealed-secrets-controller -n kube-system --timeout=120s
 
       - name: Apply OTel Collector
@@ -82,6 +61,7 @@ jobs:
           kubectl apply -f k8s/platform/otel-collector/configmap.yaml
           kubectl apply -f k8s/platform/otel-collector/service.yaml
           kubectl apply -f k8s/platform/otel-collector/daemonset.yaml
+          kubectl rollout restart daemonset/otel-collector -n otel-collector
           kubectl rollout status daemonset/otel-collector -n otel-collector --timeout=120s
 
       - name: Apply Traefik
@@ -91,11 +71,15 @@ jobs:
           kubectl apply -f k8s/platform/traefik/rbac.yaml
           kubectl apply -f k8s/platform/traefik/deployment.yaml
           kubectl apply -f k8s/platform/traefik/service.yaml
+          kubectl rollout restart deployment/traefik -n traefik
           kubectl rollout status deployment/traefik -n traefik --timeout=120s
 
       - name: Apply cert-manager
         run: |
           kubectl apply --server-side --force-conflicts -f k8s/platform/cert-manager/cert-manager.yaml
+          kubectl rollout restart deployment/cert-manager -n cert-manager
+          kubectl rollout restart deployment/cert-manager-webhook -n cert-manager
+          kubectl rollout restart deployment/cert-manager-cainjector -n cert-manager
           kubectl rollout status deployment/cert-manager -n cert-manager --timeout=120s
           kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=120s
           kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=120s
