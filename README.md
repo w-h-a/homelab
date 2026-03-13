@@ -4,14 +4,15 @@
 
 ```mermaid
 graph TB                                                                                            
-    subgraph "homelab repo (platform)"                                                              
-        TF[Terraform]                                                                               
+    subgraph "homelab repo (platform)" 
+        TF[Terraform]       
         subgraph FW[Firewall]
             subgraph DOKS[DOKS Cluster]
                 TRAEFIK[Traefik Ingress]
                 CM[cert-manager + Let's Encrypt]
                 EDNS[external-dns]
                 SS[sealed-secrets controller]
+                OTEL["OTel Collector<br/>(pod logs, k8s events, node metrics)"]
                 subgraph NS[Namespace per service]
                     SVC_SA[ServiceAccount + RBAC]
                     SVC_POD[Service Pod]
@@ -19,6 +20,8 @@ graph TB
                 TRAEFIK -->|routes traffic| SVC_POD
                 CM -->|issues TLS certs| TRAEFIK
                 SS -->|decrypts secrets| NS
+                TRAEFIK -->|traces| OTEL
+                SVC_POD -->|traces + logs| OTEL
             end
         end
         TF --> FW
@@ -40,8 +43,8 @@ graph TB
     end
 
     subgraph "Honeycomb"
-        HC[OTel traces + logs]
+        HC[OTel telemetry]
     end
 
-    SVC_POD -->|telemetry| HC
+    OTEL -->|OTLP| HC
 ```
