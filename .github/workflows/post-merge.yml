@@ -91,7 +91,7 @@ jobs:
           kubectl apply --server-side --force-conflicts -f k8s/platform/sealed-secrets/sealed-secrets.yaml
           kubectl rollout status deployment/sealed-secrets-controller -n kube-system --timeout=120s
 
-      # - name: Apply SealedSecrets
-      #   run: |
-      #     kubectl apply -f k8s/platform/traefik/sealed-honeycomb.yaml
-      #     kubectl apply -f k8s/platform/cert-manager/sealed-cloudflare.yaml
+      - name: Apply SealedSecrets
+        run: |
+          kubectl apply -f k8s/platform/traefik/sealed-honeycomb.yaml
+          kubectl apply -f k8s/platform/cert-manager/sealed-cloudflare.yaml

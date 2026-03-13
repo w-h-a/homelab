@@ -1,0 +1,13 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: honeycomb
+  namespace: traefik
+spec:
+  encryptedData:
+    api-key: AgCN87BloK8nOMy0VX+OTr710LYFZInfktJCfxp83d/SCdGzBbncpIgAQcqpyDY8lXATiPU8Lw4K8FHrQY766Y63xAEW2Ei4iNVtxg7mpKVHtDMIUZQOeBff9PpSonhnSBER3YhQR2WX2FYTs9Tg3ulWgj6uJ3WIx9HzGuqhQtZ6IqWJKsrVdiioQio7f+wbpN8WA2/++STHyhoqi2r439DLHo5eF8xiiCwVkofMheSU29RcOv89zbMxtEJeJ+g1Jpx9eEghJRCCBxrLXM5mAhL6C37u9SvmlfIwIwbEDXf3OnYdPfRH60FekrxNSjii+INVI33mSBDAPj4FWvACZ7u99o4Mc2GN+lNPWXRfU3AsBPYa0b2fzeOXGrVqYJBNwM9e2gkzpO2GO3iqLH6Ew/tKd24HABh1JnVK4F2XsLv9AQCFhVtwNQpKO/VT+cEIis+VNmctBXyadnahU0IW9NxbJY2xxYx6ULbeEyN4cffWXYOxi6ktM1eFsOlFCTLBGVB1b6YOTmu1h/6hrZVVqM25wpl3OAasTsuIEu/1BP8AW2J7WvueQyhfOAmy0N2IWs2o3YMLQRn1Okny4sQPiW6VSv/nkt8LzxQ4ImoaT9DgS43yXX77LWaGmusCUhu4nb0FsdzF4ILasaRlSKZkPRZOoLAckOVhGSecn9P7GxGXXpHFgaSZ5ERocHC3jIwZZ+QcA7Z6R55NtVrqwRX2PayYj3fCDfwUuWq9fr6I2oxpmi1Eki5tTStulDAEGGKePKWStC0se57CpGsvdbVaszfd
+  template:
+    metadata:
+      name: honeycomb
+      namespace: traefik
