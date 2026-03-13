@@ -25,18 +25,30 @@ data:
         start_at: end
         include_file_path: true
         operators:
+          - type: router
+            id: route-by-format
+            routes:
+              - output: parser-cri
+                expr: 'body matches "^[^ Z]+ (stdout|stderr) "'
+            default: extract-k8s-metadata
           - type: regex_parser
+            id: parser-cri
             regex: '^(?P<time>[^ Z]+) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'
+            output: move-log-to-body
             timestamp:
               parse_from: attributes.time
               layout_type: gotime
               layout: '2006-01-02T15:04:05.999999999Z07:00'
           - type: move
+            id: move-log-to-body
             from: attributes.log
             to: body
+            output: move-stream
           - type: move
+            id: move-stream
             from: attributes.stream
             to: attributes["log.iostream"]
+            output: extract-k8s-metadata
           - type: regex_parser
             id: extract-k8s-metadata
             regex: '^.*\/(?P<namespace>[^_]+)_(?P<pod_name>[^_]+)_(?P<uid>[a-f0-9-]+)\/(?P<container_name>[^\/]+)\/.*$'
