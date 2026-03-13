@@ -30,11 +30,11 @@ data:
             id: route-by-format
             routes:
               - output: parser-cri
-                expr: 'body matches "^[^ Z]+ (stdout|stderr) "'
+                expr: 'body matches "^[^ ]+ (stdout|stderr) "'
             default: extract-k8s-metadata
           - type: regex_parser
             id: parser-cri
-            regex: '^(?P<time>[^ Z]+) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'
+            regex: '^(?P<time>[^ ]+) (?P<stream>stdout|stderr) (?P<logtag>[^ ]*) ?(?P<log>.*)$'
             output: move-log-to-body
             timestamp:
               parse_from: attributes.time
