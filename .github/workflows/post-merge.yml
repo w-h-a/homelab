@@ -77,3 +77,11 @@ jobs:
           kubectl apply -f k8s/platform/traefik/deployment.yaml
           kubectl apply -f k8s/platform/traefik/service.yaml
           kubectl rollout status deployment/traefik -n traefik --timeout=120s
+
+      - name: Apply cert-manager
+        run: |
+          kubectl apply --server-side --force-conflicts -f k8s/platform/cert-manager/cert-manager.yaml
+          kubectl rollout status deployment/cert-manager -n cert-manager --timeout=120s
+          kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=120s
+          kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=120s
+          kubectl apply -f k8s/platform/cert-manager/cluster-issuer-production.yaml
