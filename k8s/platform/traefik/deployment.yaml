@@ -29,16 +29,9 @@ spec:
             - --log.level=INFO
             - --ping=true
             - --tracing.otlp=true
-            - --tracing.otlp.grpc.endpoint=api.honeycomb.io:443
-            - --tracing.otlp.grpc.insecure=false
-            - --tracing.otlp.grpc.headers.x-honeycomb-team=$(HONEYCOMB_API_KEY)
+            - --tracing.otlp.grpc.endpoint=otel-collector.otel-collector.svc.cluster.local:4317
+            - --tracing.otlp.grpc.insecure=true
             - --tracing.serviceName=traefik
-          env:
-            - name: HONEYCOMB_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: honeycomb
-                  key: api-key
           ports:
             - name: web
               containerPort: 80
