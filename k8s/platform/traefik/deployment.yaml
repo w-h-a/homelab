@@ -26,6 +26,7 @@ spec:
             - --providers.kubernetescrd
             - --providers.kubernetescrd.allowCrossNamespace=false
             - --accesslog=true
+            - --accesslog.format=json
             - --log.level=INFO
             - --ping=true
             - --tracing.otlp=true

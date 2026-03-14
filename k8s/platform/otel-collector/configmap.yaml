@@ -66,6 +66,15 @@ data:
           - type: move
             from: attributes.container_name
             to: resource["k8s.container.name"]
+          - type: json_parser
+            id: parser-json
+            if: 'body matches "^\\{"'
+            parse_to: body
+            trace:
+              trace_id:
+                parse_from: body.traceID
+              span_id:
+                parse_from: body.spanID
 
       k8sobjects:
         objects:
