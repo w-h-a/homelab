@@ -85,3 +85,12 @@ jobs:
           kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=120s
           kubectl apply -f k8s/platform/cert-manager/sealed-cloudflare.yaml
           kubectl apply -f k8s/platform/cert-manager/cluster-issuer-production.yaml
+
+      - name: Apply external-dns
+        run: |
+          kubectl apply -f k8s/platform/external-dns/namespace.yaml
+          kubectl apply -f k8s/platform/external-dns/sealed-cloudflare.yaml
+          kubectl apply -f k8s/platform/external-dns/rbac.yaml
+          kubectl apply -f k8s/platform/external-dns/deployment.yaml
+          kubectl rollout restart deployment/external-dns -n external-dns
+          kubectl rollout status deployment/external-dns -n external-dns --timeout=120s
