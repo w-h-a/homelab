@@ -72,9 +72,9 @@ data:
             parse_to: body
             trace:
               trace_id:
-                parse_from: body.traceID
+                parse_from: body.TraceId
               span_id:
-                parse_from: body.spanID
+                parse_from: body.SpanId
 
       k8sobjects:
         objects:
