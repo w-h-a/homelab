@@ -29,7 +29,7 @@ graph TB
     end
 
     subgraph "Cloudflare (edge)"
-        CF[Cloudflare Free Tier]
+        CF[Cloudflare]
         CF -->|proxy| TRAEFIK
         EDNS -->|manages DNS records| CF
     end
