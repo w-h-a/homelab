@@ -66,6 +66,9 @@ data:
           - type: move
             from: attributes.container_name
             to: resource["k8s.container.name"]
+          - type: copy
+            from: resource["k8s.container.name"]
+            to: resource["service.name"]
           - type: json_parser
             id: parser-json
             if: 'body matches "^\\{"'
@@ -134,7 +137,7 @@ data:
         attributes:
           - key: service.name
             value: homelab-logs
-            action: upsert
+            action: insert
 
     exporters:
       otlp/honeycomb:
