@@ -136,7 +136,7 @@ data:
       resource/logs:
         attributes:
           - key: service.name
-            value: homelab-logs
+            value: homelab-events
             action: insert
 
     exporters:
