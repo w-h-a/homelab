@@ -25,9 +25,9 @@ spec:
           args:
             - --source=traefik-proxy
             - --provider=cloudflare
-            - --domain-filter=gofer-inspect.vip
             - --policy=sync
             - --txt-owner-id=homelab
+            - --traefik-disable-legacy
             - --log-level=info
           env:
             - name: CF_API_TOKEN

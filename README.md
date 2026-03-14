@@ -19,6 +19,7 @@ graph TB
                 end
                 TRAEFIK -->|routes traffic| SVC_POD
                 CM -->|issues TLS certs| TRAEFIK
+                EDNS -->|watches IngressRoutes| TRAEFIK
                 SS -->|decrypts secrets| NS
                 TRAEFIK -->|traces| OTEL
                 SVC_POD -->|traces + logs| OTEL
@@ -31,6 +32,7 @@ graph TB
     subgraph "Cloudflare (edge)"
         CF[Cloudflare]
         CF -->|proxy| TRAEFIK
+        CM -->|DNS01 challenges| CF 
         EDNS -->|manages DNS records| CF
     end
 
