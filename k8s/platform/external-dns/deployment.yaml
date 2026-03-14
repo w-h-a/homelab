@@ -36,19 +36,19 @@ spec:
                   name: cloudflare
                   key: api-token
           ports:
-            - name: health
-              containerPort: 8080
+            - name: metrics
+              containerPort: 7979
               protocol: TCP
           readinessProbe:
             httpGet:
-              path: /healthz
-              port: health
+              path: /metrics
+              port: metrics
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /healthz
-              port: health
+              path: /metrics
+              port: metrics
             initialDelaySeconds: 10
             periodSeconds: 30
           resources:
