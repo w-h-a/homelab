@@ -23,6 +23,8 @@ data:
         exclude:
           - /var/log/pods/otel-collector_*/*/*.log
           - /var/log/pods/kube-system_konnectivity-agent-*/*/*.log
+          - /var/log/pods/gofer_*/*/*.log
+          - /var/log/pods/scraper_*/*/*.log
         start_at: end
         include_file_path: true
         operators:

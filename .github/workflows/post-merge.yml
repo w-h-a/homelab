@@ -94,3 +94,10 @@ jobs:
           kubectl apply -f k8s/platform/external-dns/deployment.yaml
           kubectl rollout restart deployment/external-dns -n external-dns
           kubectl rollout status deployment/external-dns -n external-dns --timeout=120s
+
+      - name: Apply service namespaces
+        run: |
+          kubectl apply -f k8s/services/gofer/namespace.yaml
+          kubectl apply -f k8s/services/gofer/rbac.yaml
+          kubectl apply -f k8s/services/scraper/namespace.yaml
+          kubectl apply -f k8s/services/scraper/rbac.yaml
