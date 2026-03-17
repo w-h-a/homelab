@@ -12,7 +12,7 @@ metadata:
 rules:
   # core resources managed by service deploy manifests
   - apiGroups: [""]
-    resources: [services, configmaps, secrets]
+    resources: [services, configmaps, secrets, persistentvolumeclaims]
     verbs: [get, list, watch, create, update, patch]
   # workloads
   - apiGroups: [apps]
@@ -25,6 +25,10 @@ rules:
   # traefik ingress CRD
   - apiGroups: [traefik.io]
     resources: [ingressroutes]
+    verbs: [get, list, watch, create, update, patch]
+  # cert-manager CRD
+  - apiGroups: [cert-manager.io]
+    resources: [certificates]
     verbs: [get, list, watch, create, update, patch]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
