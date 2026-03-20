@@ -147,6 +147,12 @@ data:
         headers:
           x-honeycomb-team: "${env:HONEYCOMB_API_KEY}"
 
+      otlp/honeycomb-metrics:
+        endpoint: api.honeycomb.io:443
+        headers:
+          x-honeycomb-team: "${env:HONEYCOMB_API_KEY}"
+          x-honeycomb-dataset: homelab-metrics
+
     service:
       extensions: [health_check]
       pipelines:
@@ -157,7 +163,7 @@ data:
         metrics:
           receivers: [otlp, kubeletstats]
           processors: [memory_limiter, k8sattributes, resource/cluster, resource/metrics, batch]
-          exporters: [otlp/honeycomb]
+          exporters: [otlp/honeycomb-metrics]
         logs:
           receivers: [otlp, filelog, k8sobjects]
           processors: [memory_limiter, k8sattributes, resource/cluster, resource/logs, batch]
