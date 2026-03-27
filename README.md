@@ -56,14 +56,14 @@ graph TB
 
 1. Create `k8s/services/<name>/` with Namespace, ServiceAccount, Role, RoleBinding 
 2. Add `kubectl apply` step to `.github/workflows/post-merge.yml` 
-3. Generate kubeconfig for the ServiceAccount, add as `KUBE_CONFIG` secret in the service's GitHub repo
+3. Add `DO_TOKEN` secret (DigitalOcean API token) to the service's GitHub repo — the CD pipeline uses `doctl` to generate fresh cluster credentials at deploy time
 4. If the service sends OTLP, add its namespace to the filelog exclude list in
 `k8s/platform/otel-collector/configmap.yaml`
 
 ### service repo
 
 1. Multi-stage Dockerfile (build + scratch/alpine runtime)
-2. GHA pipeline: build → push to Docker Hub → `kubectl apply -f deploy/k8s/`
+2. GHA pipeline: build → push to Docker Hub → `doctl` auth → `kubectl apply -f deploy/k8s/`
 3. `deploy/k8s/` manifests:
     - Deployment (stateless) or StatefulSet (persistent identity/storage)
     - Service (ClusterIP) — HTTP or gRPC services
