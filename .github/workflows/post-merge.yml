@@ -101,3 +101,7 @@ jobs:
           kubectl apply -f k8s/services/gofer/rbac.yaml
           kubectl apply -f k8s/services/scraper/namespace.yaml
           kubectl apply -f k8s/services/scraper/rbac.yaml
+          kubectl apply -f k8s/services/tally/namespace.yaml
+          kubectl apply -f k8s/services/tally/rbac.yaml
+          kubectl apply -f k8s/services/prism/namespace.yaml
+          kubectl apply -f k8s/services/prism/rbac.yaml
