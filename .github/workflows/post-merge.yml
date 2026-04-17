@@ -35,14 +35,14 @@ jobs:
         working-directory: terraform
         run: |
           STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID terraform-init -- terraform init
+          buildevents cmd $GITHUB_RUN_ID terraform-init -- bash -c 'terraform init'
           buildevents step $GITHUB_RUN_ID terraform-init $STEP_START terraform-init
 
       - name: Terraform Apply
         working-directory: terraform
         run: |
           STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID terraform-apply -- terraform apply -auto-approve -no-color
+          buildevents cmd $GITHUB_RUN_ID terraform-apply -- bash -c 'terraform apply -auto-approve -no-color'
           buildevents step $GITHUB_RUN_ID terraform-apply $STEP_START terraform-apply
 
   k8s-apply:
