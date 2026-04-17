@@ -16,8 +16,16 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
       TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
+      BUILDEVENT_APIKEY: ${{ secrets.HONEYCOMB_API_KEY }}
+      BUILDEVENT_DATASET: "cd"
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install buildevents
+        run: |
+          curl -sL -o buildevents https://github.com/honeycombio/buildevents/releases/latest/download/buildevents-linux-amd64
+          chmod 755 buildevents
+          sudo mv buildevents /usr/local/bin/
 
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -25,11 +33,17 @@ jobs:
 
       - name: Terraform Init
         working-directory: terraform
-        run: terraform init
+        run: |
+          STEP_START=$(date +%s)
+          buildevents cmd $GITHUB_RUN_ID terraform-init -- terraform init
+          buildevents step $GITHUB_RUN_ID terraform-init $STEP_START terraform-init
 
       - name: Terraform Apply
         working-directory: terraform
-        run: terraform apply -auto-approve -no-color
+        run: |
+          STEP_START=$(date +%s)
+          buildevents cmd $GITHUB_RUN_ID terraform-apply -- terraform apply -auto-approve -no-color
+          buildevents step $GITHUB_RUN_ID terraform-apply $STEP_START terraform-apply
 
   k8s-apply:
     needs: [terraform-apply]
@@ -37,8 +51,18 @@ jobs:
       always() &&
       (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped')
     runs-on: ubuntu-latest
+    env:
+      BUILDEVENT_APIKEY: ${{ secrets.HONEYCOMB_API_KEY }}
+      BUILDEVENT_DATASET: "cd"
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install buildevents
+        run: |
+          curl -sL -o buildevents https://github.com/honeycombio/buildevents/releases/latest/download/buildevents-linux-amd64
+          chmod 755 buildevents
+          sudo mv buildevents /usr/local/bin/
+          echo "BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
 
       - uses: digitalocean/action-doctl@v2
         with:
@@ -49,59 +73,92 @@ jobs:
 
       - name: Apply sealed-secrets
         run: |
-          kubectl apply --server-side --force-conflicts -f k8s/platform/sealed-secrets/sealed-secrets.yaml
-          kubectl rollout restart deployment/sealed-secrets-controller -n kube-system
-          kubectl rollout status deployment/sealed-secrets-controller -n kube-system --timeout=120s
+          STEP_START=$(date +%s)
+          buildevents cmd $GITHUB_RUN_ID sealed-secrets -- bash -c '
+            kubectl apply --server-side --force-conflicts -f k8s/platform/sealed-secrets/sealed-secrets.yaml &&
+            kubectl rollout restart deployment/sealed-secrets-controller -n kube-system &&
+            kubectl rollout status deployment/sealed-secrets-controller -n kube-system --timeout=120s
+          '
+          buildevents step $GITHUB_RUN_ID sealed-secrets $STEP_START sealed-secrets
 
       - name: Apply OTel Collector
         run: |
-          kubectl apply -f k8s/platform/otel-collector/namespace.yaml
-          kubectl apply -f k8s/platform/otel-collector/sealed-honeycomb.yaml
-          kubectl apply -f k8s/platform/otel-collector/rbac.yaml
-          kubectl apply -f k8s/platform/otel-collector/configmap.yaml
-          kubectl apply -f k8s/platform/otel-collector/service.yaml
-          kubectl apply -f k8s/platform/otel-collector/daemonset.yaml
-          kubectl rollout restart daemonset/otel-collector -n otel-collector
-          kubectl rollout status daemonset/otel-collector -n otel-collector --timeout=120s
+          STEP_START=$(date +%s)
+          buildevents cmd $GITHUB_RUN_ID otel-collector -- bash -c '
+            kubectl apply -f k8s/platform/otel-collector/namespace.yaml &&
+            kubectl apply -f k8s/platform/otel-collector/sealed-honeycomb.yaml &&
+            kubectl apply -f k8s/platform/otel-collector/rbac.yaml &&
+            kubectl apply -f k8s/platform/otel-collector/configmap.yaml &&
+            kubectl apply -f k8s/platform/otel-collector/service.yaml &&
+            kubectl apply -f k8s/platform/otel-collector/daemonset.yaml &&
+            kubectl rollout restart daemonset/otel-collector -n otel-collector &&
+            kubectl rollout status daemonset/otel-collector -n otel-collector --timeout=120s
+          '
+          buildevents step $GITHUB_RUN_ID otel-collector $STEP_START otel-collector
 
       - name: Apply Traefik
         run: |
-          kubectl apply --server-side --force-conflicts -f k8s/platform/traefik/crds.yaml
-          kubectl apply -f k8s/platform/traefik/namespace.yaml
-          kubectl apply -f k8s/platform/traefik/rbac.yaml
-          kubectl apply -f k8s/platform/traefik/deployment.yaml
-          kubectl apply -f k8s/platform/traefik/service.yaml
-          kubectl rollout restart deployment/traefik -n traefik
-          kubectl rollout status deployment/traefik -n traefik --timeout=120s
+          STEP_START=$(date +%s)
+          buildevents cmd $GITHUB_RUN_ID traefik -- bash -c '
+            kubectl apply --server-side --force-conflicts -f k8s/platform/traefik/crds.yaml &&
+            kubectl apply -f k8s/platform/traefik/namespace.yaml &&
+            kubectl apply -f k8s/platform/traefik/rbac.yaml &&
+            kubectl apply -f k8s/platform/traefik/deployment.yaml &&
+            kubectl apply -f k8s/platform/traefik/service.yaml &&
+            kubectl rollout restart deployment/traefik -n traefik &&
+            kubectl rollout status deployment/traefik -n traefik --timeout=120s
+          '
+          buildevents step $GITHUB_RUN_ID traefik $STEP_START traefik
 
       - name: Apply cert-manager
         run: |
-          kubectl apply --server-side --force-conflicts -f k8s/platform/cert-manager/cert-manager.yaml
-          kubectl rollout restart deployment/cert-manager -n cert-manager
-          kubectl rollout restart deployment/cert-manager-webhook -n cert-manager
-          kubectl rollout restart deployment/cert-manager-cainjector -n cert-manager
-          kubectl rollout status deployment/cert-manager -n cert-manager --timeout=120s
-          kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=120s
-          kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=120s
-          kubectl apply -f k8s/platform/cert-manager/sealed-cloudflare.yaml
-          kubectl apply -f k8s/platform/cert-manager/cluster-issuer-production.yaml
+          STEP_START=$(date +%s)
+          buildevents cmd $GITHUB_RUN_ID cert-manager -- bash -c '
+            kubectl apply --server-side --force-conflicts -f k8s/platform/cert-manager/cert-manager.yaml &&
+            kubectl rollout restart deployment/cert-manager -n cert-manager &&
+            kubectl rollout restart deployment/cert-manager-webhook -n cert-manager &&
+            kubectl rollout restart deployment/cert-manager-cainjector -n cert-manager &&
+            kubectl rollout status deployment/cert-manager -n cert-manager --timeout=120s &&
+            kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=120s &&
+            kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=120s &&
+            kubectl apply -f k8s/platform/cert-manager/sealed-cloudflare.yaml &&
+            kubectl apply -f k8s/platform/cert-manager/cluster-issuer-production.yaml
+          '
+          buildevents step $GITHUB_RUN_ID cert-manager $STEP_START cert-manager
 
       - name: Apply external-dns
         run: |
-          kubectl apply -f k8s/platform/external-dns/namespace.yaml
-          kubectl apply -f k8s/platform/external-dns/sealed-cloudflare.yaml
-          kubectl apply -f k8s/platform/external-dns/rbac.yaml
-          kubectl apply -f k8s/platform/external-dns/deployment.yaml
-          kubectl rollout restart deployment/external-dns -n external-dns
-          kubectl rollout status deployment/external-dns -n external-dns --timeout=120s
+          STEP_START=$(date +%s)
+          buildevents cmd $GITHUB_RUN_ID external-dns -- bash -c '
+            kubectl apply -f k8s/platform/external-dns/namespace.yaml &&
+            kubectl apply -f k8s/platform/external-dns/sealed-cloudflare.yaml &&
+            kubectl apply -f k8s/platform/external-dns/rbac.yaml &&
+            kubectl apply -f k8s/platform/external-dns/deployment.yaml &&
+            kubectl rollout restart deployment/external-dns -n external-dns &&
+            kubectl rollout status deployment/external-dns -n external-dns --timeout=120s
+          '
+          buildevents step $GITHUB_RUN_ID external-dns $STEP_START external-dns
 
       - name: Apply service namespaces
         run: |
-          kubectl apply -f k8s/services/gofer/namespace.yaml
-          kubectl apply -f k8s/services/gofer/rbac.yaml
-          kubectl apply -f k8s/services/scraper/namespace.yaml
-          kubectl apply -f k8s/services/scraper/rbac.yaml
-          kubectl apply -f k8s/services/tally/namespace.yaml
-          kubectl apply -f k8s/services/tally/rbac.yaml
-          kubectl apply -f k8s/services/prism/namespace.yaml
-          kubectl apply -f k8s/services/prism/rbac.yaml
+          STEP_START=$(date +%s)
+          buildevents cmd $GITHUB_RUN_ID service-namespaces -- bash -c '
+            kubectl apply -f k8s/services/gofer/namespace.yaml &&
+            kubectl apply -f k8s/services/gofer/rbac.yaml &&
+            kubectl apply -f k8s/services/scraper/namespace.yaml &&
+            kubectl apply -f k8s/services/scraper/rbac.yaml &&
+            kubectl apply -f k8s/services/tally/namespace.yaml &&
+            kubectl apply -f k8s/services/tally/rbac.yaml &&
+            kubectl apply -f k8s/services/prism/namespace.yaml &&
+            kubectl apply -f k8s/services/prism/rbac.yaml
+          '
+          buildevents step $GITHUB_RUN_ID service-namespaces $STEP_START service-namespaces
+
+      - name: Finalize trace
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            buildevents build $GITHUB_RUN_ID $BUILD_START success
+          else
+            buildevents build $GITHUB_RUN_ID $BUILD_START failure
+          fi
