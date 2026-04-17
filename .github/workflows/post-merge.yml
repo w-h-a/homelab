@@ -9,6 +9,11 @@ concurrency:
   group: post-merge
   cancel-in-progress: false
 
+env:
+  OTEL_EXPORTER_OTLP_ENDPOINT: "https://api.honeycomb.io"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+  OTEL_SERVICE_NAME: "cd"
+
 jobs:
   terraform-apply:
     runs-on: ubuntu-latest
@@ -16,16 +21,16 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
       TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
-      BUILDEVENT_APIKEY: ${{ secrets.HONEYCOMB_API_KEY }}
-      BUILDEVENT_DATASET: "cd"
+      OTEL_EXPORTER_OTLP_HEADERS: "x-honeycomb-team=${{ secrets.HONEYCOMB_API_KEY }}"
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install buildevents
+      - name: Install otel-cli
         run: |
-          curl -sL -o buildevents https://github.com/honeycombio/buildevents/releases/latest/download/buildevents-linux-amd64
-          chmod 755 buildevents
-          sudo mv buildevents /usr/local/bin/
+          curl -sL https://github.com/equinix-labs/otel-cli/releases/download/v0.4.5/otel-cli_0.4.5_linux_amd64.deb -o otel-cli.deb
+          sudo dpkg -i otel-cli.deb
+          TRACE_ID=$(echo -n "$GITHUB_RUN_ID" | md5sum | cut -c1-32)
+          echo "TRACE_ID=$TRACE_ID" >> "$GITHUB_ENV"
 
       - uses: hashicorp/setup-terraform@v3
         with:
@@ -35,16 +40,20 @@ jobs:
       - name: Terraform Init
         working-directory: terraform
         run: |
-          STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID terraform-init terraform-init -- bash -c 'terraform init'
-          buildevents step $GITHUB_RUN_ID terraform-init $STEP_START terraform-init
+          otel-cli exec \
+            --name terraform-init \
+            --force-trace-id $TRACE_ID \
+            --attrs "github.repository=$GITHUB_REPOSITORY,github.run_id=$GITHUB_RUN_ID,github.sha=$GITHUB_SHA,job=terraform-apply" \
+            -- terraform init
 
       - name: Terraform Apply
         working-directory: terraform
         run: |
-          STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID terraform-apply terraform-apply -- bash -c 'terraform apply -auto-approve -no-color'
-          buildevents step $GITHUB_RUN_ID terraform-apply $STEP_START terraform-apply
+          otel-cli exec \
+            --name terraform-apply \
+            --force-trace-id $TRACE_ID \
+            --attrs "github.repository=$GITHUB_REPOSITORY,github.run_id=$GITHUB_RUN_ID,github.sha=$GITHUB_SHA,job=terraform-apply" \
+            -- terraform apply -auto-approve -no-color
 
   k8s-apply:
     needs: [terraform-apply]
@@ -53,17 +62,16 @@ jobs:
       (needs.terraform-apply.result == 'success' || needs.terraform-apply.result == 'skipped')
     runs-on: ubuntu-latest
     env:
-      BUILDEVENT_APIKEY: ${{ secrets.HONEYCOMB_API_KEY }}
-      BUILDEVENT_DATASET: "cd"
+      OTEL_EXPORTER_OTLP_HEADERS: "x-honeycomb-team=${{ secrets.HONEYCOMB_API_KEY }}"
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install buildevents
+      - name: Install otel-cli
         run: |
-          curl -sL -o buildevents https://github.com/honeycombio/buildevents/releases/latest/download/buildevents-linux-amd64
-          chmod 755 buildevents
-          sudo mv buildevents /usr/local/bin/
-          echo "BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
+          curl -sL https://github.com/equinix-labs/otel-cli/releases/download/v0.4.5/otel-cli_0.4.5_linux_amd64.deb -o otel-cli.deb
+          sudo dpkg -i otel-cli.deb
+          TRACE_ID=$(echo -n "$GITHUB_RUN_ID" | md5sum | cut -c1-32)
+          echo "TRACE_ID=$TRACE_ID" >> "$GITHUB_ENV"
 
       - uses: digitalocean/action-doctl@v2
         with:
@@ -74,18 +82,23 @@ jobs:
 
       - name: Apply sealed-secrets
         run: |
-          STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID sealed-secrets sealed-secrets -- bash -c '
+          otel-cli exec \
+            --name sealed-secrets \
+            --force-trace-id $TRACE_ID \
+            --attrs "github.repository=$GITHUB_REPOSITORY,github.run_id=$GITHUB_RUN_ID,github.sha=$GITHUB_SHA,job=k8s-apply" \
+            -- bash -c '
             kubectl apply --server-side --force-conflicts -f k8s/platform/sealed-secrets/sealed-secrets.yaml &&
             kubectl rollout restart deployment/sealed-secrets-controller -n kube-system &&
             kubectl rollout status deployment/sealed-secrets-controller -n kube-system --timeout=120s
           '
-          buildevents step $GITHUB_RUN_ID sealed-secrets $STEP_START sealed-secrets
 
       - name: Apply OTel Collector
         run: |
-          STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID otel-collector otel-collector -- bash -c '
+          otel-cli exec \
+            --name otel-collector \
+            --force-trace-id $TRACE_ID \
+            --attrs "github.repository=$GITHUB_REPOSITORY,github.run_id=$GITHUB_RUN_ID,github.sha=$GITHUB_SHA,job=k8s-apply" \
+            -- bash -c '
             kubectl apply -f k8s/platform/otel-collector/namespace.yaml &&
             kubectl apply -f k8s/platform/otel-collector/sealed-honeycomb.yaml &&
             kubectl apply -f k8s/platform/otel-collector/rbac.yaml &&
@@ -95,12 +108,14 @@ jobs:
             kubectl rollout restart daemonset/otel-collector -n otel-collector &&
             kubectl rollout status daemonset/otel-collector -n otel-collector --timeout=120s
           '
-          buildevents step $GITHUB_RUN_ID otel-collector $STEP_START otel-collector
 
       - name: Apply Traefik
         run: |
-          STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID traefik traefik -- bash -c '
+          otel-cli exec \
+            --name traefik \
+            --force-trace-id $TRACE_ID \
+            --attrs "github.repository=$GITHUB_REPOSITORY,github.run_id=$GITHUB_RUN_ID,github.sha=$GITHUB_SHA,job=k8s-apply" \
+            -- bash -c '
             kubectl apply --server-side --force-conflicts -f k8s/platform/traefik/crds.yaml &&
             kubectl apply -f k8s/platform/traefik/namespace.yaml &&
             kubectl apply -f k8s/platform/traefik/rbac.yaml &&
@@ -109,12 +124,14 @@ jobs:
             kubectl rollout restart deployment/traefik -n traefik &&
             kubectl rollout status deployment/traefik -n traefik --timeout=120s
           '
-          buildevents step $GITHUB_RUN_ID traefik $STEP_START traefik
 
       - name: Apply cert-manager
         run: |
-          STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID cert-manager cert-manager -- bash -c '
+          otel-cli exec \
+            --name cert-manager \
+            --force-trace-id $TRACE_ID \
+            --attrs "github.repository=$GITHUB_REPOSITORY,github.run_id=$GITHUB_RUN_ID,github.sha=$GITHUB_SHA,job=k8s-apply" \
+            -- bash -c '
             kubectl apply --server-side --force-conflicts -f k8s/platform/cert-manager/cert-manager.yaml &&
             kubectl rollout restart deployment/cert-manager -n cert-manager &&
             kubectl rollout restart deployment/cert-manager-webhook -n cert-manager &&
@@ -125,12 +142,14 @@ jobs:
             kubectl apply -f k8s/platform/cert-manager/sealed-cloudflare.yaml &&
             kubectl apply -f k8s/platform/cert-manager/cluster-issuer-production.yaml
           '
-          buildevents step $GITHUB_RUN_ID cert-manager $STEP_START cert-manager
 
       - name: Apply external-dns
         run: |
-          STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID external-dns external-dns -- bash -c '
+          otel-cli exec \
+            --name external-dns \
+            --force-trace-id $TRACE_ID \
+            --attrs "github.repository=$GITHUB_REPOSITORY,github.run_id=$GITHUB_RUN_ID,github.sha=$GITHUB_SHA,job=k8s-apply" \
+            -- bash -c '
             kubectl apply -f k8s/platform/external-dns/namespace.yaml &&
             kubectl apply -f k8s/platform/external-dns/sealed-cloudflare.yaml &&
             kubectl apply -f k8s/platform/external-dns/rbac.yaml &&
@@ -138,12 +157,14 @@ jobs:
             kubectl rollout restart deployment/external-dns -n external-dns &&
             kubectl rollout status deployment/external-dns -n external-dns --timeout=120s
           '
-          buildevents step $GITHUB_RUN_ID external-dns $STEP_START external-dns
 
       - name: Apply service namespaces
         run: |
-          STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID service-namespaces service-namespaces -- bash -c '
+          otel-cli exec \
+            --name service-namespaces \
+            --force-trace-id $TRACE_ID \
+            --attrs "github.repository=$GITHUB_REPOSITORY,github.run_id=$GITHUB_RUN_ID,github.sha=$GITHUB_SHA,job=k8s-apply" \
+            -- bash -c '
             kubectl apply -f k8s/services/gofer/namespace.yaml &&
             kubectl apply -f k8s/services/gofer/rbac.yaml &&
             kubectl apply -f k8s/services/scraper/namespace.yaml &&
@@ -153,13 +174,3 @@ jobs:
             kubectl apply -f k8s/services/prism/namespace.yaml &&
             kubectl apply -f k8s/services/prism/rbac.yaml
           '
-          buildevents step $GITHUB_RUN_ID service-namespaces $STEP_START service-namespaces
-
-      - name: Finalize trace
-        if: always()
-        run: |
-          if [ "${{ job.status }}" == "success" ]; then
-            buildevents build $GITHUB_RUN_ID $BUILD_START success
-          else
-            buildevents build $GITHUB_RUN_ID $BUILD_START failure
-          fi
