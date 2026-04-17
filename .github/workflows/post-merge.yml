@@ -36,14 +36,14 @@ jobs:
         working-directory: terraform
         run: |
           STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID terraform-init -- bash -c 'terraform init'
+          buildevents cmd $GITHUB_RUN_ID terraform-init terraform-init -- bash -c 'terraform init'
           buildevents step $GITHUB_RUN_ID terraform-init $STEP_START terraform-init
 
       - name: Terraform Apply
         working-directory: terraform
         run: |
           STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID terraform-apply -- bash -c 'terraform apply -auto-approve -no-color'
+          buildevents cmd $GITHUB_RUN_ID terraform-apply terraform-apply -- bash -c 'terraform apply -auto-approve -no-color'
           buildevents step $GITHUB_RUN_ID terraform-apply $STEP_START terraform-apply
 
   k8s-apply:
@@ -75,7 +75,7 @@ jobs:
       - name: Apply sealed-secrets
         run: |
           STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID sealed-secrets -- bash -c '
+          buildevents cmd $GITHUB_RUN_ID sealed-secrets sealed-secrets -- bash -c '
             kubectl apply --server-side --force-conflicts -f k8s/platform/sealed-secrets/sealed-secrets.yaml &&
             kubectl rollout restart deployment/sealed-secrets-controller -n kube-system &&
             kubectl rollout status deployment/sealed-secrets-controller -n kube-system --timeout=120s
@@ -85,7 +85,7 @@ jobs:
       - name: Apply OTel Collector
         run: |
           STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID otel-collector -- bash -c '
+          buildevents cmd $GITHUB_RUN_ID otel-collector otel-collector -- bash -c '
             kubectl apply -f k8s/platform/otel-collector/namespace.yaml &&
             kubectl apply -f k8s/platform/otel-collector/sealed-honeycomb.yaml &&
             kubectl apply -f k8s/platform/otel-collector/rbac.yaml &&
@@ -100,7 +100,7 @@ jobs:
       - name: Apply Traefik
         run: |
           STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID traefik -- bash -c '
+          buildevents cmd $GITHUB_RUN_ID traefik traefik -- bash -c '
             kubectl apply --server-side --force-conflicts -f k8s/platform/traefik/crds.yaml &&
             kubectl apply -f k8s/platform/traefik/namespace.yaml &&
             kubectl apply -f k8s/platform/traefik/rbac.yaml &&
@@ -114,7 +114,7 @@ jobs:
       - name: Apply cert-manager
         run: |
           STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID cert-manager -- bash -c '
+          buildevents cmd $GITHUB_RUN_ID cert-manager cert-manager -- bash -c '
             kubectl apply --server-side --force-conflicts -f k8s/platform/cert-manager/cert-manager.yaml &&
             kubectl rollout restart deployment/cert-manager -n cert-manager &&
             kubectl rollout restart deployment/cert-manager-webhook -n cert-manager &&
@@ -130,7 +130,7 @@ jobs:
       - name: Apply external-dns
         run: |
           STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID external-dns -- bash -c '
+          buildevents cmd $GITHUB_RUN_ID external-dns external-dns -- bash -c '
             kubectl apply -f k8s/platform/external-dns/namespace.yaml &&
             kubectl apply -f k8s/platform/external-dns/sealed-cloudflare.yaml &&
             kubectl apply -f k8s/platform/external-dns/rbac.yaml &&
@@ -143,7 +143,7 @@ jobs:
       - name: Apply service namespaces
         run: |
           STEP_START=$(date +%s)
-          buildevents cmd $GITHUB_RUN_ID service-namespaces -- bash -c '
+          buildevents cmd $GITHUB_RUN_ID service-namespaces service-namespaces -- bash -c '
             kubectl apply -f k8s/services/gofer/namespace.yaml &&
             kubectl apply -f k8s/services/gofer/rbac.yaml &&
             kubectl apply -f k8s/services/scraper/namespace.yaml &&
