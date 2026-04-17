@@ -23,12 +23,7 @@ variable "node_count" {
   default = 1
 }
 
-variable "node_cpu" {
-  type    = list(number)
-  default = [2]
-}
-
-variable "node_memory" {
-  type    = list(number)
-  default = [4096]
+variable "node_size" {
+  type    = string
+  default = "s-2vcpu-4gb-amd"
 }

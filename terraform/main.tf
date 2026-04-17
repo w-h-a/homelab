@@ -2,28 +2,6 @@ data "digitalocean_kubernetes_versions" "k8s" {
   version_prefix = "${var.k8s_version}."
 }
 
-data "digitalocean_sizes" "nodes" {
-  filter {
-    key    = "vcpus"
-    values = var.node_cpu
-  }
-
-  filter {
-    key    = "memory"
-    values = var.node_memory
-  }
-
-  filter {
-    key    = "regions"
-    values = [var.region]
-  }
-
-  sort {
-    key       = "price_monthly"
-    direction = "asc"
-  }
-}
-
 resource "digitalocean_kubernetes_cluster" "cluster" {
   name    = "${var.name}-${var.region}"
   region  = var.region
@@ -31,7 +9,7 @@ resource "digitalocean_kubernetes_cluster" "cluster" {
 
   node_pool {
     name       = "default"
-    size       = element(data.digitalocean_sizes.nodes.sizes, 0).slug
+    size       = var.node_size
     node_count = var.node_count
   }
 }
