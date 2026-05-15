@@ -29,7 +29,7 @@ data:
           - /var/log/pods/kube-system_hubble-ui-*/*/*.log
           - /var/log/pods/kube-system_coredns-*/*/*.log
           - /var/log/pods/kube-system_cilium-*/*/*.log
-          - /var/log/pods/kube-system_csi-do-plugin-*/*/*.log
+          - /var/log/pods/kube-system_csi-do-node-*/*/*.log
           - /var/log/pods/external-dns_*/*/*.log
           - /var/log/pods/traefik_*/*/*.log
           # services (traces via OTLP, logs excluded)
