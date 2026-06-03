@@ -30,6 +30,8 @@ data:
           - /var/log/pods/kube-system_coredns-*/*/*.log
           - /var/log/pods/kube-system_cilium-*/*/*.log
           - /var/log/pods/kube-system_csi-do-node-*/*/*.log
+          - /var/log/pods/kube-system_cpc-bridge-proxy-ebpf-*/*/*.log
+          - /var/log/pods/kube-system_do-node-agent-*/*/*.log
           - /var/log/pods/external-dns_*/*/*.log
           - /var/log/pods/traefik_*/*/*.log
           # services (traces via OTLP, logs excluded)
