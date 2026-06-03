@@ -35,8 +35,6 @@ data:
           # services (traces via OTLP, logs excluded)
           - /var/log/pods/gofer_*/*/*.log
           - /var/log/pods/scraper_*/*/*.log
-          - /var/log/pods/tally_*/*/*.log
-          - /var/log/pods/prism_*/*/*.log
         start_at: end
         include_file_path: true
         operators:
